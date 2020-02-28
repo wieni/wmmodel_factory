@@ -1,0 +1,31 @@
+services:
+    plugin.manager.wmmodel_factory.factory:
+        class: Drupal\wmmodel_factory\EntityFactoryPluginManager
+        parent: default_plugin_manager
+
+    plugin.manager.wmmodel_factory.state:
+        class: Drupal\wmmodel_factory\EntityStatePluginManager
+        parent: default_plugin_manager
+
+    wmmodel_factory.faker.generator:
+        class: Faker\Generator
+
+    wmmodel_factory.factory.manager:
+        class: Drupal\wmmodel_factory\EntityFactoryManager
+        arguments:
+            - '@plugin.manager.wmmodel_factory.factory'
+
+    wmmodel_factory.state.manager:
+        class: Drupal\wmmodel_factory\EntityStateManager
+        arguments:
+            - '@plugin.manager.wmmodel_factory.state'
+
+    wmmodel.factory:
+        class: Drupal\wmmodel_factory\Factory
+        arguments:
+            - '@wmmodel_factory.faker.generator'
+            - '@wmmodel_factory.factory.manager'
+            - '@wmmodel_factory.state.manager'
+            - '@wmmodel.factory.model'
+            - '@entity_type.manager'
+            - '@entity_field.manager'

@@ -1,0 +1,9 @@
+<?php
+
+function factory(string $class, ?int $amount = null)
+{
+    return \Drupal::getContainer()
+        ->get('wmmodel.factory')
+        ->of($class)
+        ->times($amount);
+}
