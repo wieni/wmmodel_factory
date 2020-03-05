@@ -9,8 +9,6 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 abstract class EntityFactoryBase extends PluginBase implements EntityFactoryInterface, ContainerFactoryPluginInterface
 {
-    /** @var Factory */
-    protected $factory;
     /** @var Faker */
     protected $faker;
 
@@ -21,11 +19,10 @@ abstract class EntityFactoryBase extends PluginBase implements EntityFactoryInte
         $pluginDefinition
     ) {
         $instance = new static($configuration, $pluginId, $pluginDefinition);
-        $instance->factory = $container->get('wmmodel.factory');
         $instance->faker = $container->get('wmmodel_factory.faker.generator');
 
         return $instance;
     }
 
-    abstract public function make(array $attributes = []): array;
+    abstract public function make(): array;
 }

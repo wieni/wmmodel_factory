@@ -3,25 +3,16 @@
 namespace Drupal\wmmodel_factory;
 
 use Drupal\Core\Entity\ContentEntityInterface;
-use Drupal\Core\Entity\EntityFieldManagerInterface;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\wmmodel\Factory\ModelFactoryInterface;
-use Faker\Generator as Faker;
+use Symfony\Component\DependencyInjection\ContainerAwareInterface;
+use Symfony\Component\DependencyInjection\ContainerAwareTrait;
 
-class Factory
+class Factory implements ContainerAwareInterface
 {
-    /** @var Faker */
-    protected $faker;
-    /** @var EntityFactoryManager */
-    protected $factoryManager;
-    /** @var EntityStateManager */
-    protected $stateManager;
+    use ContainerAwareTrait;
+
     /** @var ModelFactoryInterface */
     protected $modelFactory;
-    /** @var EntityTypeManagerInterface */
-    protected $entityTypeManager;
-    /** @var EntityFieldManagerInterface */
-    protected $entityFieldManager;
 
     /** @var array */
     protected $afterMaking = [];
@@ -31,19 +22,9 @@ class Factory
     protected $langcode = null;
 
     public function __construct(
-        Faker $faker,
-        EntityFactoryManager $factoryManager,
-        EntityStateManager $stateManager,
-        ModelFactoryInterface $modelFactory,
-        EntityTypeManagerInterface $entityTypeManager,
-        EntityFieldManagerInterface $entityFieldManager
+        ModelFactoryInterface $modelFactory
     ) {
-        $this->faker = $faker;
-        $this->factoryManager = $factoryManager;
-        $this->stateManager = $stateManager;
         $this->modelFactory = $modelFactory;
-        $this->entityTypeManager = $entityTypeManager;
-        $this->entityFieldManager = $entityFieldManager;
     }
 
     /** Set the default langcode of models you wish to create / make. */
@@ -117,8 +98,7 @@ class Factory
      */
     public function make(string $class, array $attributes = [])
     {
-        [$entityType, $bundle] = $this->modelFactory->getEntityTypeAndBundle($class);
-        return $this->of($entityType, $bundle)->make($attributes);
+        return $this->of($class)->make($attributes);
     }
 
     /**
@@ -136,14 +116,15 @@ class Factory
     {
         [$entityType, $bundle] = $this->modelFactory->getEntityTypeAndBundle($class);
 
-        return new FactoryBuilder(
-            $this->faker,
-            $this->entityTypeManager,
-            $this->entityFieldManager,
-            $this->factoryManager,
-            $this->stateManager,
-            $this,
-            $entityType,
+        return $this->ofType($entityType, $bundle, $name);
+    }
+
+    /** Create a builder for the given model. */
+    public function ofType(string $entityTypeId, string $bundle, string $name = 'default'): FactoryBuilder
+    {
+        return FactoryBuilder::createInstance(
+            $this->container,
+            $entityTypeId,
             $bundle,
             $name,
             $this->langcode,

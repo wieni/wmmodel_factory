@@ -6,7 +6,7 @@ use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Faker\Generator as Faker;
-use InvalidArgumentException;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 class FactoryBuilder
 {
@@ -16,19 +16,17 @@ class FactoryBuilder
     protected $entityTypeManager;
     /** @var EntityFieldManagerInterface */
     protected $entityFieldManager;
-    /** @var EntityFactoryManager */
+    /** @var EntityFactoryPluginManager */
     protected $factoryManager;
-    /** @var EntityStateManager */
+    /** @var EntityStatePluginManager */
     protected $stateManager;
-    /** @var Factory */
-    protected $factory;
 
     /** @var string */
     protected $entityType;
     /** @var string */
     protected $bundle;
-    /** @var string */
-    protected $name = 'default';
+    /** @var string|null */
+    protected $name;
     /** @var string|null */
     protected $langcode;
     /** @var array */
@@ -39,14 +37,15 @@ class FactoryBuilder
     protected $amount;
     /** @var array */
     protected $activeStates = [];
+    /** @var bool */
+    protected $isCreating;
 
     public function __construct(
         Faker $faker,
         EntityTypeManagerInterface $entityTypeManager,
         EntityFieldManagerInterface $entityFieldManager,
-        EntityFactoryManager $factoryManager,
-        EntityStateManager $stateManager,
-        Factory $factory,
+        EntityFactoryPluginManager $factoryManager,
+        EntityStatePluginManager $stateManager,
         string $entityType,
         string $bundle,
         ?string $name = null,
@@ -59,13 +58,37 @@ class FactoryBuilder
         $this->entityFieldManager = $entityFieldManager;
         $this->factoryManager = $factoryManager;
         $this->stateManager = $stateManager;
-        $this->factory = $factory;
         $this->entityType = $entityType;
         $this->bundle = $bundle;
         $this->name = $name;
         $this->langcode = $langcode;
         $this->afterMaking = $afterMaking;
         $this->afterCreating = $afterCreating;
+    }
+
+    public static function createInstance(
+        ContainerInterface $container,
+        string $entityType,
+        string $bundle,
+        ?string $name = null,
+        ?string $langcode = null,
+        array $afterMaking = [],
+        array $afterCreating = []
+    ): FactoryBuilder
+    {
+        return new static(
+            $container->get('wmmodel_factory.faker.generator'),
+            $container->get('entity_type.manager'),
+            $container->get('entity_field.manager'),
+            $container->get('plugin.manager.wmmodel_factory.factory'),
+            $container->get('plugin.manager.wmmodel_factory.state'),
+            $entityType,
+            $bundle,
+            $name,
+            $langcode,
+            $afterMaking,
+            $afterCreating
+        );
     }
 
     /** Set the amount of models you wish to create / make. */
@@ -117,15 +140,21 @@ class FactoryBuilder
      */
     public function create(array $attributes = [])
     {
+        $this->isCreating = true;
+
         $results = $this->make($attributes);
 
-        $collection = $results;
-        if ($collection instanceof ContentEntityInterface) {
-            $collection = [$collection];
+        $collection = [];
+        if (is_array($results)) {
+            $collection = $results;
+        } elseif ($results) {
+            $collection = [$results];
         }
 
         $this->store($collection);
         $this->callAfterCreating($collection);
+
+        unset($this->isCreating);
 
         return $results;
     }
@@ -204,6 +233,36 @@ class FactoryBuilder
         }
     }
 
+    protected function getFactoryName(bool $exceptionOnInvalid = true): ?string
+    {
+        $factoryNames = $this->factoryManager->getNamesByEntityType($this->entityType, $this->bundle);
+
+        if (in_array($this->name, $factoryNames, true)) {
+            return $this->name;
+        }
+
+        if (in_array('default', $factoryNames, true)) {
+            return 'default';
+        }
+
+        if (!empty($factoryNames)) {
+            return reset($factoryNames);
+        }
+
+        if (!$exceptionOnInvalid) {
+            return null;
+        }
+
+        throw new \InvalidArgumentException("Unable to locate factory for entity with type {$this->entityType} and bundle {$this->bundle}.");
+    }
+
+    protected function getFactory(): EntityFactoryInterface
+    {
+        $pluginId = implode('.', [$this->entityType, $this->bundle, $this->getFactoryName()]);
+
+        return $this->factoryManager->createInstance($pluginId);
+    }
+
     /**
      * Get a raw attributes array for the model.
      *
@@ -211,14 +270,8 @@ class FactoryBuilder
      */
     protected function getRawAttributes(array $attributes = []): array
     {
-        $factory = $this->factoryManager->getDefinition($this->entityType, $this->bundle, $this->name);
-
-        if (!$factory) {
-            throw new InvalidArgumentException("Unable to locate factory with name [{$this->name}] [{$this->entityType}] [{$this->bundle}].");
-        }
-
-        $definition = $factory->make($attributes);
-        $definition = $this->applyStates($definition, $attributes);
+        $definition = $this->getFactory()->make();
+        $definition = $this->applyStates($definition);
         $attributes = array_merge($definition, $attributes);
         $attributes = $this->expandAttributes($attributes);
         $attributes = $this->addDrupalAttributes($attributes);
@@ -230,14 +283,9 @@ class FactoryBuilder
     protected function makeInstance(array $attributes = []): ContentEntityInterface
     {
         $storage = $this->entityTypeManager->getStorage($this->entityType);
-        /** @var ContentEntityInterface $instance */
-        $instance = $storage->create(
-            $this->getRawAttributes($attributes)
-        );
-        if ($this->langcode && $instance->isTranslatable()) {
-            $instance->set('langcode', $this->langcode);
-        }
-        return $instance;
+        $attributes = $this->getRawAttributes($attributes);
+
+        return $storage->create($attributes);
     }
 
     /**
@@ -245,22 +293,22 @@ class FactoryBuilder
      *
      * @throws \InvalidArgumentException
      */
-    protected function applyStates(array $definition, array $attributes = []): array
+    protected function applyStates(array $definition): array
     {
         foreach ($this->activeStates as $state) {
-            $factory = $this->stateManager->getDefinition($this->entityType, $this->bundle, $state);
+            $pluginId = $this->stateManager->getPluginIdByEntityType($this->entityType, $this->bundle, $state);
 
-            if (!$factory) {
+            if (!$pluginId) {
                 if ($this->stateHasAfterCallback($state)) {
                     continue;
                 }
 
-                throw new InvalidArgumentException("Unable to locate [{$state}] state for [{$this->entityType}] [{$this->bundle}].");
+                throw new \InvalidArgumentException("Unable to locate [{$state}] state for [{$this->entityType}] [{$this->bundle}].");
             }
 
             $definition = array_merge(
                 $definition,
-                $factory->make($attributes)
+                $this->stateManager->createInstance($pluginId)->make()
             );
         }
 
@@ -272,20 +320,17 @@ class FactoryBuilder
     {
         foreach ($attributes as &$attribute) {
             if (is_callable($attribute) && !is_string($attribute) && !is_array($attribute)) {
-                // The attribute is a callback. So anything can happen.
-                // Let's make sure that every entity generated during this callback
-                // is made in the same langcode by overriding the default langcode.
-                $originalLangcode = $this->factory->getLangcode();
-                $this->factory->setLangcode($this->langcode);
-
                 $attribute = $attribute($attributes);
-
-                // Reset the langcode back to what it originally was
-                $this->factory->setLangcode($originalLangcode);
             }
 
-            if ($attribute instanceof static) {
-                $attribute = $attribute->make();
+            if (is_a($attribute, self::class)) {
+                $attribute = $this->isCreating
+                    ? $attribute->create()
+                    : $attribute->make();
+            }
+
+            if (is_array($attribute)) {
+                $attribute = $this->expandAttributes($attribute);
             }
         }
 
@@ -337,7 +382,7 @@ class FactoryBuilder
      */
     protected function callAfter(array $afterCallbacks, array $models): void
     {
-        $states = array_merge([$this->name], $this->activeStates);
+        $states = array_merge([$this->getFactoryName()], $this->activeStates);
 
         foreach ($models as $model) {
             foreach ($states as $state) {

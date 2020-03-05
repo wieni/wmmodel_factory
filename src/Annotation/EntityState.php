@@ -19,18 +19,13 @@ class EntityState extends Plugin
     public function getId()
     {
         if (isset($this->definition['entity_type'], $this->definition['name'])) {
-            $name = [
-                $this->definition['entity_type'],
-                $this->definition['bundle'],
-                $this->definition['name'],
-            ];
+            $name[] = $this->definition['entity_type'];
 
-            if (empty($this->definition['bundle'])) {
-                $name = [
-                    $this->definition['entity_type'],
-                    $this->definition['name'],
-                ];
+            if (!empty($this->definition['bundle'])) {
+                $name[] = $this->definition['bundle'];
             }
+
+            $name[] = $this->definition['name'];
 
             return implode('.', $name);
         }

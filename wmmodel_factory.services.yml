@@ -9,23 +9,16 @@ services:
 
     wmmodel_factory.faker.generator:
         class: Faker\Generator
+        factory: wmmodel_factory.faker.factory:create
 
-    wmmodel_factory.factory.manager:
-        class: Drupal\wmmodel_factory\EntityFactoryManager
-        arguments:
-            - '@plugin.manager.wmmodel_factory.factory'
-
-    wmmodel_factory.state.manager:
-        class: Drupal\wmmodel_factory\EntityStateManager
-        arguments:
-            - '@plugin.manager.wmmodel_factory.state'
+    wmmodel_factory.faker.factory:
+        class: Drupal\wmmodel_factory\Faker\Factory
+        calls:
+            - [setContainer, ['@service_container']]
 
     wmmodel.factory:
         class: Drupal\wmmodel_factory\Factory
         arguments:
-            - '@wmmodel_factory.faker.generator'
-            - '@wmmodel_factory.factory.manager'
-            - '@wmmodel_factory.state.manager'
             - '@wmmodel.factory.model'
-            - '@entity_type.manager'
-            - '@entity_field.manager'
+        calls:
+            - [setContainer, ['@service_container']]

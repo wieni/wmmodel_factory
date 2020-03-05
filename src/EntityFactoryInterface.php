@@ -6,5 +6,5 @@ use Drupal\Component\Plugin\PluginInspectionInterface;
 
 interface EntityFactoryInterface extends PluginInspectionInterface
 {
-    public function make(array $attributes = []): array;
+    public function make(): array;
 }
