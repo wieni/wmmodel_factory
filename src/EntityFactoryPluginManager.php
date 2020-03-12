@@ -18,7 +18,7 @@ class EntityFactoryPluginManager extends DefaultPluginManager
         ModuleHandlerInterface $moduleHandler
     ) {
         parent::__construct(
-            'EntityFactory/Factory',
+            '',
             $namespaces,
             $moduleHandler,
             EntityFactoryInterface::class,

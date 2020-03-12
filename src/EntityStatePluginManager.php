@@ -18,7 +18,7 @@ class EntityStatePluginManager extends DefaultPluginManager
         ModuleHandlerInterface $moduleHandler
     ) {
         parent::__construct(
-            'EntityFactory/State',
+            '',
             $namespaces,
             $moduleHandler,
             EntityStateInterface::class,
