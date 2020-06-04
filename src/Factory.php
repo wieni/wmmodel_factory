@@ -116,7 +116,7 @@ class Factory implements ContainerAwareInterface
     {
         [$entityType, $bundle] = $this->modelFactory->getEntityTypeAndBundle($class);
 
-        return $this->ofType($entityType, $bundle, $name);
+        return $this->ofType($entityType, $bundle ?? $entityType, $name);
     }
 
     /** Create a builder for the given model. */
