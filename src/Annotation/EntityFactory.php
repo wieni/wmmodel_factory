@@ -10,6 +10,8 @@ use Drupal\Component\Annotation\Plugin;
 class EntityFactory extends Plugin
 {
     /** @var string */
+    public $label;
+    /** @var string */
     public $entity_type;
     /** @var string */
     public $bundle;
