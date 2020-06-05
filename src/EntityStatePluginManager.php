@@ -44,21 +44,18 @@ class EntityStatePluginManager extends DefaultPluginManager
         return null;
     }
 
-    public function getNamesByEntityType(string $entityType, string $bundle): array
+    public function getDefinitionsByEntityType(string $entityType, ?string $bundle = null): array
     {
-        $definitions = array_filter(
+        return array_filter(
             $this->getDefinitions(),
             static function (array $definition) use ($entityType, $bundle) {
-                return $definition['entity_type'] === $entityType
-                    && $definition['bundle'] === $bundle;
-            }
-        );
+                if ($bundle && isset($definition['bundle'])) {
+                    return $definition['entity_type'] === $entityType
+                        && $definition['bundle'] === $bundle;
+                }
 
-        return array_map(
-            static function (array $definition) {
-                return $definition['name'];
-            },
-            $definitions
+                return $definition['entity_type'] === $entityType;
+            }
         );
     }
 }
