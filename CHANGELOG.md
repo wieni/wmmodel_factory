@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2020-06-05
+### Added
+- Add label properties to annotations
+
+### Changed
+- Replace EntityStatePluginManager::getNamesByEntityType with EntityStatePluginManager::getDefinitionsByEntityType
+
+### Fixed
+- Add missing type hint in docblock
+
 ## [1.0.2] - 2020-06-04
 ### Fixed
 - Fix issue when creating entity without bundle

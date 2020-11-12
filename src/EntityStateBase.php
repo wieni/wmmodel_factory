@@ -4,12 +4,13 @@ namespace Drupal\wmmodel_factory;
 
 use Drupal\Component\Plugin\PluginBase;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\wmmodel_factory\Faker\Provider\DrupalEntity;
 use Faker\Generator as Faker;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 abstract class EntityStateBase extends PluginBase implements EntityStateInterface, ContainerFactoryPluginInterface
 {
-    /** @var Faker */
+    /** @var Faker|DrupalEntity */
     protected $faker;
 
     public static function create(
