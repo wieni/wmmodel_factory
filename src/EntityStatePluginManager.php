@@ -48,7 +48,7 @@ class EntityStatePluginManager extends DefaultPluginManager
     {
         return array_filter(
             $this->getDefinitions(),
-            static function (array $definition) use ($entityType, $bundle) {
+            static function (array $definition) use ($entityType, $bundle): bool {
                 if ($bundle && isset($definition['bundle'])) {
                     return $definition['entity_type'] === $entityType
                         && $definition['bundle'] === $bundle;

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add PHP 8 support 
 - Replace `fzaninotto/faker` dependency with `fakerphp/faker`
 - Add hooks documentation
+- Add PHPStan
+
+### Changed
+- Apply coding standard fixes
 
 ## [1.1.0] - 2020-06-05
 ### Added

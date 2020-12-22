@@ -74,8 +74,7 @@ class FactoryBuilder
         ?string $langcode = null,
         array $afterMaking = [],
         array $afterCreating = []
-    ): FactoryBuilder
-    {
+    ): self {
         return new static(
             $container->get('wmmodel_factory.faker.generator'),
             $container->get('entity_type.manager'),
@@ -200,7 +199,7 @@ class FactoryBuilder
             return [];
         }
 
-        return array_map(function () use ($attributes) {
+        return array_map(function () use ($attributes): array {
             return $this->getRawAttributes($attributes);
         }, range(1, $this->amount));
     }
