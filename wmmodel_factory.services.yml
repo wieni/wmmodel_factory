@@ -19,6 +19,7 @@ services:
     wmmodel.factory:
         class: Drupal\wmmodel_factory\Factory
         arguments:
-            - '@wmmodel.factory.model'
+            - '@entity_type.manager'
+            - '@entity_type.repository'
         calls:
             - [setContainer, ['@service_container']]

@@ -3,7 +3,10 @@
 namespace Drupal\wmmodel_factory;
 
 use Drupal\Core\Entity\ContentEntityInterface;
-use Drupal\wmmodel\Factory\ModelFactoryInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\EntityTypeRepositoryInterface;
+use Drupal\Core\Entity\Exception\AmbiguousEntityClassException;
+use Drupal\Core\Entity\Exception\NoCorrespondingEntityClassException;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerAwareTrait;
 
@@ -11,8 +14,10 @@ class Factory implements ContainerAwareInterface
 {
     use ContainerAwareTrait;
 
-    /** @var ModelFactoryInterface */
-    protected $modelFactory;
+    /** @var EntityTypeManagerInterface */
+    protected $entityTypeManager;
+    /** @var EntityTypeRepositoryInterface */
+    protected $entityTypeRepository;
 
     /** @var array */
     protected $afterMaking = [];
@@ -22,9 +27,11 @@ class Factory implements ContainerAwareInterface
     protected $langcode = null;
 
     public function __construct(
-        ModelFactoryInterface $modelFactory
+        EntityTypeManagerInterface $entityTypeManager,
+        EntityTypeRepositoryInterface $entityTypeRepository
     ) {
-        $this->modelFactory = $modelFactory;
+        $this->entityTypeManager = $entityTypeManager;
+        $this->entityTypeRepository = $entityTypeRepository;
     }
 
     /** Set the default langcode of models you wish to create / make. */
@@ -44,7 +51,7 @@ class Factory implements ContainerAwareInterface
     /** Define a callback to run after making a model. */
     public function afterMaking(string $class, callable $callback, string $name = 'default'): self
     {
-        [$entityType, $bundle] = $this->modelFactory->getEntityTypeAndBundle($class);
+        [$entityType, $bundle] = $this->getEntityTypeAndBundle($class);
         $this->afterMaking[$entityType][$bundle][$name][] = $callback;
 
         return $this;
@@ -59,7 +66,7 @@ class Factory implements ContainerAwareInterface
     /** Define a callback to run after creating a model. */
     public function afterCreating(string $class, callable $callback, string $name = 'default'): self
     {
-        [$entityType, $bundle] = $this->modelFactory->getEntityTypeAndBundle($class);
+        [$entityType, $bundle] = $this->getEntityTypeAndBundle($class);
         $this->afterCreating[$entityType][$bundle][$name][] = $callback;
 
         return $this;
@@ -114,7 +121,7 @@ class Factory implements ContainerAwareInterface
     /** Create a builder for the given model. */
     public function of(string $class, string $name = 'default'): FactoryBuilder
     {
-        [$entityType, $bundle] = $this->modelFactory->getEntityTypeAndBundle($class);
+        [$entityType, $bundle] = $this->getEntityTypeAndBundle($class);
 
         return $this->ofType($entityType, $bundle ?? $entityType, $name);
     }
@@ -131,5 +138,14 @@ class Factory implements ContainerAwareInterface
             $this->afterMaking,
             $this->afterCreating
         );
+    }
+
+    protected function getEntityTypeAndBundle(string $className): array
+    {
+        $entityTypeId = $this->entityTypeRepository->getEntityTypeFromClass($className);
+        $storage = $this->entityTypeManager->getStorage($entityTypeId);
+        $bundle = $storage->getBundleFromClass($className);
+
+        return [$entityTypeId, $bundle];
     }
 }

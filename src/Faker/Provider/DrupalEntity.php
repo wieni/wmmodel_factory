@@ -2,7 +2,8 @@
 
 namespace Drupal\wmmodel_factory\Faker\Provider;
 
-use Drupal\wmmodel\Factory\ModelFactoryInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\EntityTypeRepositoryInterface;
 use Drupal\wmmodel_factory\FactoryBuilder;
 use Faker\Generator;
 use Faker\Provider\Base;
@@ -12,24 +13,30 @@ class DrupalEntity extends Base
 {
     /** @var ContainerInterface */
     protected $container;
-    /** @var ModelFactoryInterface */
-    protected $modelFactory;
+    /** @var EntityTypeManagerInterface */
+    protected $entityTypeManager;
+    /** @var EntityTypeRepositoryInterface */
+    protected $entityTypeRepository;
 
     public function __construct(
         Generator $generator,
         ContainerInterface $container,
-        ModelFactoryInterface $modelFactory
+        EntityTypeManagerInterface $entityTypeManager,
+        EntityTypeRepositoryInterface $entityTypeRepository
     ) {
         parent::__construct($generator);
         $this->container = $container;
-        $this->modelFactory = $modelFactory;
+        $this->entityTypeManager = $entityTypeManager;
+        $this->entityTypeRepository = $entityTypeRepository;
     }
 
     public function entity(string $class, ?string $name = null): FactoryBuilder
     {
-        [$entityType, $bundle] = $this->modelFactory->getEntityTypeAndBundle($class);
+        $entityTypeId = $this->entityTypeRepository->getEntityTypeFromClass($class);
+        $storage = $this->entityTypeManager->getStorage($entityTypeId);
+        $bundle = $storage->getBundleFromClass($class);
 
-        return $this->entityWithType($entityType, $bundle, $name);
+        return $this->entityWithType($entityTypeId, $bundle, $name);
     }
 
     public function entityWithType(string $entityType, ?string $bundle = null, ?string $name = null): FactoryBuilder
