@@ -1,6 +1,6 @@
 name: wmmodel_factory
 type: module
 description: Define factories that allow you to generate entities with certain fields, filled with random data
-core_version_requirement: ^9.3
+core_version_requirement: ^9.3 || ^10
 package: Wieni
 dependencies: {  }
